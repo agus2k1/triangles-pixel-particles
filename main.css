@@ -1,0 +1,22 @@
+* {
+  margin: 0;
+  padding: 0;
+}
+body {
+  overscroll-behavior: none;
+  overflow: hidden;
+}
+
+#container {
+  width: 100vw;
+  height: 100vh;
+  border: 1px solid #f00;
+}
+
+canvas {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  display: block;
+}
