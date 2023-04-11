@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import fragment from './shaders/fragment.glsl.js';
 import vertex from './shaders/vertex.glsl.js';
 import texture from './images/textures/triangle.png';
+import GUI from 'lil-gui';
 
 const loadImages = (paths, whenLoaded) => {
   const imgs = [];
@@ -28,7 +29,7 @@ export default class Sketch {
     this.container = document.getElementById('container');
     this.width = this.container.offsetWidth;
     this.height = this.container.offsetHeight;
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ alpha: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(this.width, this.height);
     // this.renderer.setClearColor(0xeeeeee, 1);
@@ -46,10 +47,10 @@ export default class Sketch {
     let frustumSize = 10;
     let aspect = 2.083;
     this.camera = new THREE.OrthographicCamera(
-      this.width / -2 / (frustumSize * aspect),
-      this.width / 2 / (frustumSize * aspect),
-      this.height / 2 / (frustumSize * aspect),
-      this.height / -2 / (frustumSize * aspect),
+      this.width / -2 / (frustumSize * aspect * 14),
+      this.width / 2 / (frustumSize * aspect * 14),
+      this.height / 2 / (frustumSize * aspect * 14),
+      this.height / -2 / (frustumSize * aspect * 14),
       0.001,
       1000
     );
@@ -63,6 +64,7 @@ export default class Sketch {
 
       // Setup scene
       this.addMesh();
+      this.settings();
       // this.setupResize();
       // this.resize();
     });
@@ -125,6 +127,7 @@ export default class Sketch {
 
     // Get coordinates
     let positions = [];
+    let positions2 = [];
     let rotation = [];
     let size = [];
     let colors = [];
@@ -138,10 +141,15 @@ export default class Sketch {
       imageArray[x][y] = imageData.data[i];
 
       // Get only black points positions
-      if (imageData.data[i] < 50) {
+      if (imageData.data[i] > 50) {
         positions.push(
-          (2.083 * (x - precision / 2)) / 50,
-          (y - precision / 2) / 50,
+          (2.08 * (x - precision / 2)) / 50,
+          (-y + precision / 2) / 50,
+          0
+        );
+        positions2.push(
+          6 * (Math.random() - 0.5),
+          6 * (Math.random() - 0.5),
           0
         );
         rotation.push(Math.random() * 2 * Math.PI);
@@ -160,14 +168,6 @@ export default class Sketch {
 
     this.image = imageArray;
 
-    // Particles
-    // let number = 100;
-    // let positions = new Float32Array(number * 3);
-
-    // for (let i = 0; i < number; i++) {
-    //   positions.set([Math.random(), Math.random(), Math.random()], 3 * i);
-    // }
-
     this.material = new THREE.ShaderMaterial({
       extensions: {
         derivatives: '#extension GL_OES_standard_derivatives : enable',
@@ -176,6 +176,7 @@ export default class Sketch {
         uTime: { value: 0 },
         resolution: { value: new THREE.Vector4() },
         uTexture: { value: new THREE.TextureLoader().load(texture) },
+        uProgress: { value: 0 },
       },
       fragmentShader: fragment,
       vertexShader: vertex,
@@ -191,6 +192,10 @@ export default class Sketch {
     this.geometry.setAttribute(
       'position',
       new THREE.BufferAttribute(new Float32Array(positions), 3)
+    );
+    this.geometry.setAttribute(
+      'aPosition',
+      new THREE.BufferAttribute(new Float32Array(positions2), 3)
     );
     this.geometry.setAttribute(
       'aRotation',
@@ -231,17 +236,17 @@ export default class Sketch {
       let y = posArray[i + 1];
       let rotation = rotArray[i / 3];
 
-      let tx = (x * 50) / 2.83 + this.precision / 2;
-      let ty = y * 50 + this.precision / 2;
+      let tx = (x * 50) / 2.08 + this.precision / 2;
+      let ty = -y * 50 + this.precision / 2;
 
-      if (tx <= 0 || tx >= this.precision || ty <= 25 || ty >= this.precision) {
+      if (tx <= 0 || tx >= this.precision || ty <= 0 || ty >= this.precision) {
         rotation += Math.PI;
-        // } else {
-        //   let pixelColor = this.image[Math.floor(tx)][Math.floor(ty)];
+      } else {
+        let pixelColor = this.image[Math.floor(tx)][Math.floor(ty)];
 
-        //   if (pixelColor > 255) {
-        //     rotation += Math.PI;
-        //   }
+        if (pixelColor < 50) {
+          rotation += Math.PI + 0.5;
+        }
       }
 
       x = x + Math.cos(rotation) * speed * 0.01;
@@ -256,10 +261,19 @@ export default class Sketch {
     rot.needsUpdate = true;
   }
 
+  settings() {
+    this.settings = {
+      progress: 0,
+    };
+    this.gui = new GUI();
+    this.gui.add(this.settings, 'progress', 0, 1, 0.001);
+  }
+
   render() {
     this.time += 0.05;
     this.moveTriangles();
     this.material.uniforms.uTime.value = this.time;
+    this.material.uniforms.uProgress.value = this.settings.progress;
     this.renderer.render(this.scene, this.camera);
     window.requestAnimationFrame(this.render.bind(this));
   }
